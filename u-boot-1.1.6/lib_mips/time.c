@@ -23,6 +23,7 @@
 
 #include <common.h>
 
+#ifndef CONFIG_JzRISC
 
 static inline void mips_compare_set(u32 v)
 {
@@ -97,3 +98,5 @@ ulong get_tbclk(void)
 {
 	return CFG_HZ;
 }
+
+#endif /* !CONFIG_JzRISC */

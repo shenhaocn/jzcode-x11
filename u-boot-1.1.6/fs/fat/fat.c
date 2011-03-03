@@ -83,6 +83,9 @@ fat_register_device(block_dev_desc_t *dev_desc, int part_no)
 		/* no signature found */
 		return -1;
 	}
+	if (buffer[450] != 11 && buffer[450] != 6 )
+		printf("I'm sorry we only support fat16 and fat32\n");
+
 	if(!strncmp((char *)&buffer[DOS_FS_TYPE_OFFSET],"FAT",3)) {
 		/* ok, we assume we are on a PBR only */
 		cur_part = 1;
@@ -109,6 +112,11 @@ fat_register_device(block_dev_desc_t *dev_desc, int part_no)
 		part_offset=32;
 		cur_part = 1;
 #endif
+#if  (CONFIG_COMMANDS & CFG_CMD_MMC)
+		part_offset=(buffer[457] << 24) |( buffer[456] <<16 )| (buffer[455] << 8) | (buffer[454]);
+		cur_part = 1;
+#endif
+
 	}
 	return 0;
 }
@@ -231,6 +239,8 @@ get_fatent(fsdata *mydata, __u32 entry)
 	/* Get the actual entry from the table */
 	switch (mydata->fatsize) {
 	case 32:
+		offset *=4;
+		ret = (mydata->fatbuf[3 + offset]<<24) |(mydata->fatbuf[2 + offset]<<16) | (mydata->fatbuf[1 + offset]<< 8)| (mydata->fatbuf[0 + offset]);
 		ret = FAT2CPU32(((__u32*)mydata->fatbuf)[offset]);
 		break;
 	case 16:

@@ -23,7 +23,13 @@
 
 #ifndef _MMC_H_
 #define _MMC_H_
-#include <asm/arch/mmc.h>
+
+#ifdef CONFIG_JZ4730
+#include <asm-mips/jz4730.h>
+#endif
+#ifdef CONFIG_JZ4740
+#include <asm-mips/jz4740.h>
+#endif
 
 int mmc_init(int verbose);
 int mmc_read(ulong src, uchar *dst, int size);

@@ -6,7 +6,7 @@
  *
  *  Copyright (C) 2004 Thomas Gleixner (tglx@linutronix.de)
  *
- * $Id: nand_bbt.c,v 1.28 2004/11/13 10:19:09 gleixner Exp $
+ * $Id: nand_bbt.c,v 1.4 2008-03-19 09:48:30 zyliu Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -63,6 +63,9 @@
 
 #include <asm/errno.h>
 
+#ifndef CFG_NAND_BADBLOCK_PAGE
+#define CFG_NAND_BADBLOCK_PAGE 0 /* NAND bad block was marked at this page in a block, starting from 0 */
+#endif
 /**
  * check_pattern - [GENERIC] check if a pattern is in the buffer
  * @buf:	the buffer to search
@@ -252,6 +255,10 @@ static int read_abs_bbts (struct mtd_info *mtd, uint8_t *buf, struct nand_bbt_de
  *
  * Create a bad block table by scanning the device
  * for the given good/bad block identify pattern
+ *
+ * Note by Ingenic: the bad block flag may be stored in ether the 
+ * first page or the last page of the block. So we check both the
+ * first page and the last page of the block here.
  */
 static void create_bbt (struct mtd_info *mtd, uint8_t *buf, struct nand_bbt_descr *bd, int chip)
 {
@@ -292,7 +299,8 @@ static void create_bbt (struct mtd_info *mtd, uint8_t *buf, struct nand_bbt_desc
 	}
 
 	for (i = startblock; i < numblocks;) {
-		nand_read_raw (mtd, buf, from, readlen, ooblen);
+		/* Check the bad mark page of the block */
+		nand_read_raw (mtd, buf, from + CFG_NAND_BADBLOCK_PAGE * mtd->oobblock, readlen, ooblen);
 		for (j = 0; j < len; j++) {
 			if (check_pattern (&buf[j * scanlen], scanlen, mtd->oobblock, bd)) {
 				this->bbt[i >> 3] |= 0x03 << (i & 0x6);
@@ -360,6 +368,15 @@ static int search_bbt (struct mtd_info *mtd, uint8_t *buf, struct nand_bbt_descr
 			int actblock = startblock + dir * block;
 			/* Read first page */
 			nand_read_raw (mtd, buf, actblock << this->bbt_erase_shift, mtd->oobblock, mtd->oobsize);
+			if (!check_pattern(buf, scanlen, mtd->oobblock, td)) {
+				td->pages[i] = actblock << (this->bbt_erase_shift - this->page_shift);
+				if (td->options & NAND_BBT_VERSION) {
+					td->version[i] = buf[mtd->oobblock + td->veroffs];
+				}
+				break;
+			}
+			/* Read last page */
+			nand_read_raw (mtd, buf, (actblock << this->bbt_erase_shift) + (mtd->erasesize - mtd->oobblock), mtd->oobblock, mtd->oobsize);
 			if (!check_pattern(buf, scanlen, mtd->oobblock, td)) {
 				td->pages[i] = actblock << (this->bbt_erase_shift - this->page_shift);
 				if (td->options & NAND_BBT_VERSION) {

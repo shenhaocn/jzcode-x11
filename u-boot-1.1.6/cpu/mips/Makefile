@@ -26,8 +26,12 @@ include $(TOPDIR)/config.mk
 LIB	= $(obj)lib$(CPU).a
 
 START	= start.o
-COBJS	= asc_serial.o au1x00_serial.o au1x00_eth.o au1x00_usb_ohci.o \
-	  cpu.o interrupts.o incaip_clock.o
+COBJS	= jz4730.o jz4740.o jz5730.o jz_lcd.o jz4740_slcd.o jz4750_lcd.o jz_serial.o jz_eth.o jz_i2c.o \
+	  asc_serial.o au1x00_serial.o au1x00_eth.o au1x00_usb_ohci.o \
+	  cpu.o interrupts.o incaip_clock.o jz_mmc.o jz4730_nand.o jz4740_cpm_test.o \
+	  jz5730_nand.o jz4740_nand.o jz4750_nand.o jz_cs8900.o jz4750.o jz4750_mmc.o \
+          jz4760.o jz4760_nand.o jz4760_eth.o
+
 SOBJS	= incaip_wdt.o cache.o
 
 SRCS	:= $(START:.o=.S) $(SOBJS:.o=.S) $(COBJS:.o=.c)

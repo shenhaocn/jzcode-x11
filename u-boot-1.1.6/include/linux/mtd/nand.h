@@ -5,7 +5,7 @@
  *		       Steven J. Hill <sjhill@realitydiluted.com>
  *		       Thomas Gleixner <tglx@linutronix.de>
  *
- * $Id: nand.h,v 1.68 2004/11/12 10:40:37 gleixner Exp $
+ * $Id: nand.h,v 1.2 2008-07-09 04:50:27 lhhuang Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -135,6 +135,12 @@ extern int nand_read_raw (struct mtd_info *mtd, uint8_t *buf, loff_t from, size_
 #define NAND_ECC_HW8_512	6
 /* Hardware ECC 12 byte ECC per 2048 Byte data */
 #define NAND_ECC_HW12_2048	7
+/* Hardware ECC 9 byte ECC per 512 Byte data */
+#define NAND_ECC_HW9_512	8
+/* Hardware ECC 7 byte ECC per 512 Byte data(4-bit BCH) */
+#define NAND_ECC_HW7_512	9
+/* Hardware ECC 13 byte ECC per 512 Byte data(8-bit BCH) */
+#define NAND_ECC_HW13_512	10
 
 /*
  * Constants for Hardware ECC
@@ -208,6 +214,12 @@ typedef enum {
 	FL_SYNCING,
 	FL_CACHEDPRG,
 } nand_state_t;
+
+/* Buffer which will be corrected by BCH of jz4750 */
+struct buf_be_corrected {
+	unsigned char *data;
+	unsigned char *oob;
+};
 
 /* Keep gcc happy */
 struct nand_chip;
@@ -348,6 +360,9 @@ struct nand_chip {
 #define NAND_MFR_NATIONAL	0x8f
 #define NAND_MFR_RENESAS	0x07
 #define NAND_MFR_STMICRO	0x20
+#define NAND_MFR_HYNIX     	0xad
+#define NAND_MFR_MICRON		0x2c
+#define NAND_MFR_AMD		0x01
 
 /**
  * struct nand_flash_dev - NAND Flash Device ID Structure

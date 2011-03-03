@@ -1086,6 +1086,8 @@ static int flash_detect_cfi (flash_info_t * info)
 		     info->chipwidth <<= 1) {
 			flash_write_cmd (info, 0, 0, info->cmd_reset);
 			flash_write_cmd (info, 0, FLASH_OFFSET_CFI, FLASH_CMD_CFI);
+			/* wait for Flash data ready */
+			udelay(10);
 			if (flash_isequal (info, 0, FLASH_OFFSET_CFI_RESP, 'Q')
 			    && flash_isequal (info, 0, FLASH_OFFSET_CFI_RESP + 1, 'R')
 			    && flash_isequal (info, 0, FLASH_OFFSET_CFI_RESP + 2, 'Y')) {

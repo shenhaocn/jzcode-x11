@@ -1,5 +1,5 @@
 /*
- * $Id: mtd-abi.h,v 1.7 2004/11/23 15:37:32 gleixner Exp $
+ * $Id: mtd-abi.h,v 1.2 2008-07-09 05:17:37 lhhuang Exp $
  *
  * Portions of MTD ABI definition which are shared by kernel and user space
  */
@@ -89,11 +89,20 @@ struct region_info_user {
 #define MEMGETBADBLOCK		_IOW('M', 11, loff_t)
 #define MEMSETBADBLOCK		_IOW('M', 12, loff_t)
 
+#if !defined(CONFIG_JZ4750) && !defined(CONFIG_JZ4750D)
 struct nand_oobinfo {
 	uint32_t useecc;
 	uint32_t eccbytes;
 	uint32_t oobfree[8][2];
-	uint32_t eccpos[32];
+	uint32_t eccpos[72];
 };
+#else
+struct nand_oobinfo {
+	uint32_t useecc;
+	uint32_t eccbytes;
+	uint32_t oobfree[8][2];
+	uint32_t eccpos[104];
+};
+#endif
 
 #endif /* __MTD_ABI_H__ */

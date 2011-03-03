@@ -30,6 +30,7 @@
 #include <asm/addrspace.h>
 #include <asm/cacheops.h>
 
+#ifndef CONFIG_JzRISC
 
 	/* 16KB is the maximum size of instruction and data caches on
 	 * MIPS 4K.
@@ -267,3 +268,5 @@ mips_cache_lock:
 
 	j	ra
 	.end	mips_cache_lock
+
+#endif /* CONFIG_JzRISC */

@@ -145,6 +145,10 @@ uchar default_environment[] = {
 int default_environment_size = sizeof(default_environment);
 #endif
 
+#if defined(CFG_ENV_IS_IN_MSC)		/* Environment is in MMC/SD card */
+int default_environment_size = sizeof(default_environment);
+#endif
+
 void env_crc_update (void)
 {
 	env_ptr->crc = crc32(0, env_ptr->data, ENV_SIZE);

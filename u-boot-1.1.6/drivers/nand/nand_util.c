@@ -315,7 +315,8 @@ int nand_write_opts(nand_info_t *meminfo, const nand_write_options_t *opts)
 	/* make sure device page sizes are valid */
 	if (!(meminfo->oobsize == 16 && meminfo->oobblock == 512)
 	    && !(meminfo->oobsize == 8 && meminfo->oobblock == 256)
-	    && !(meminfo->oobsize == 64 && meminfo->oobblock == 2048)) {
+	    && !(meminfo->oobsize == 64 && meminfo->oobblock == 2048)
+	    && !(meminfo->oobsize == 128 && meminfo->oobblock == 4096)) {
 		printf("Unknown flash (not normal NAND)\n");
 		return -1;
 	}
@@ -470,7 +471,10 @@ int nand_write_opts(nand_info_t *meminfo, const nand_write_options_t *opts)
 		if (result != 0) {
 			printf("writing NAND page at offset 0x%lx failed\n",
 			       mtdoffset);
-			goto restoreoob;
+			buffer -= mtdoffset - blockstart;
+			blockstart += meminfo->erasesize;
+			mtdoffset = blockstart;
+			continue;
 		}
 		imglen -= readlen;
 
@@ -520,6 +524,7 @@ restoreoob:
  * @return		0 in case of success
  *
  */
+
 int nand_read_opts(nand_info_t *meminfo, const nand_read_options_t *opts)
 {
 	int imglen = opts->length;
@@ -536,7 +541,8 @@ int nand_read_opts(nand_info_t *meminfo, const nand_read_options_t *opts)
 	/* make sure device page sizes are valid */
 	if (!(meminfo->oobsize == 16 && meminfo->oobblock == 512)
 	    && !(meminfo->oobsize == 8 && meminfo->oobblock == 256)
-	    && !(meminfo->oobsize == 64 && meminfo->oobblock == 2048)) {
+	    && !(meminfo->oobsize == 64 && meminfo->oobblock == 2048)
+	    && !(meminfo->oobsize == 128 && meminfo->oobblock == 4096)) {
 		printf("Unknown flash (not normal NAND)\n");
 		return -1;
 	}

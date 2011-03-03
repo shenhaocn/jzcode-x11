@@ -66,7 +66,7 @@ extern int default_environment_size;
 
 char * env_name_spec = "NAND";
 
-
+#undef ENV_IS_EMBEDDED
 #ifdef ENV_IS_EMBEDDED
 extern uchar environment[];
 env_t *env_ptr = (env_t *)(&environment[0]);
@@ -248,8 +248,9 @@ void env_relocate_spec (void)
 			gd->env_valid = 1;
 
 	}
-
+#if 0
 	free(env_ptr);
+#endif
 	if(gd->env_valid == 1) {
 		env_ptr = tmp_env1;
 		free(tmp_env2);

@@ -488,6 +488,10 @@ fixup_silent_linux ()
 		return;
 
 	debug ("before silent fix-up: %s\n", cmdline);
+#ifdef CONFIG_JzRISC
+	strcpy (buf, cmdline);
+	strcat (buf, " quiet");
+#else
 	if (cmdline) {
 		if ((start = strstr (cmdline, "console=")) != NULL) {
 			end = strchr (start, ' ');
@@ -503,6 +507,7 @@ fixup_silent_linux ()
 	} else {
 		strcpy (buf, "console=");
 	}
+#endif
 
 	setenv ("bootargs", buf);
 	debug ("after silent fix-up: %s\n", buf);

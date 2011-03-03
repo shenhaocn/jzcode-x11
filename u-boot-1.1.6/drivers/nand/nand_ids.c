@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2002 Thomas Gleixner (tglx@linutronix.de)
   *
- * $Id: nand_ids.c,v 1.10 2004/05/26 13:40:12 gleixner Exp $
+ * $Id: nand_ids.c,v 1.3 2008-04-24 03:17:15 zyliu Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -35,7 +35,10 @@ struct nand_flash_dev nand_flash_ids[] = {
 	{"NAND 1MiB 3,3V 8-bit", 	0xe8, 256, 1, 0x1000, 0},
 	{"NAND 1MiB 3,3V 8-bit", 	0xec, 256, 1, 0x1000, 0},
 	{"NAND 2MiB 3,3V 8-bit", 	0xea, 256, 2, 0x1000, 0},
-	{"NAND 4MiB 3,3V 8-bit", 	0xd5, 512, 4, 0x2000, 0},
+
+	/*Next Chip ID is conflict with "NAND 2GiB 3,3V 8-bit", omit the chip*/
+	/*{"NAND 4MiB 3,3V 8-bit", 	0xd5, 512, 4, 0x2000, 0},*/
+
 	{"NAND 4MiB 3,3V 8-bit", 	0xe3, 512, 4, 0x2000, 0},
 	{"NAND 4MiB 3,3V 8-bit", 	0xe5, 512, 4, 0x2000, 0},
 	{"NAND 8MiB 3,3V 8-bit", 	0xd6, 512, 8, 0x2000, 0},
@@ -67,7 +70,7 @@ struct nand_flash_dev nand_flash_ids[] = {
 
 	{"NAND 256MiB 3,3V 8-bit", 	0x71, 512, 256, 0x4000, 0},
 
-	{"NAND 512MiB 3,3V 8-bit", 	0xDC, 512, 512, 0x4000, 0},
+/*	{"NAND 512MiB 3,3V 8-bit", 	0xDC, 512, 512, 0x4000, 0}, */
 
 	/* These are the new chips with large page size. The pagesize
 	* and the erasesize is determined from the extended id bytes
@@ -102,6 +105,9 @@ struct nand_flash_dev nand_flash_ids[] = {
 	{"NAND 2GiB 1,8V 16-bit", 	0xB5, 0, 2048, 0, NAND_SAMSUNG_LP_OPTIONS | NAND_BUSWIDTH_16 | NAND_NO_AUTOINCR},
 	{"NAND 2GiB 3,3V 16-bit", 	0xC5, 0, 2048, 0, NAND_SAMSUNG_LP_OPTIONS | NAND_BUSWIDTH_16 | NAND_NO_AUTOINCR},
 
+	/* 32 Gigabit */
+	{"NAND 4GiB 3,3V 8-bit",	0xD7, 0, 4096, 0, NAND_SAMSUNG_LP_OPTIONS | NAND_NO_AUTOINCR},
+
 	/* Renesas AND 1 Gigabit. Those chips do not support extended id and have a strange page/block layout !
 	 * The chosen minimum erasesize is 4 * 2 * 2048 = 16384 Byte, as those chips have an array of 4 page planes
 	 * 1 block = 2 pages, but due to plane arrangement the blocks 0-3 consists of page 0 + 4,1 + 5, 2 + 6, 3 + 7
@@ -123,6 +129,9 @@ struct nand_manufacturers nand_manuf_ids[] = {
 	{NAND_MFR_NATIONAL, "National"},
 	{NAND_MFR_RENESAS, "Renesas"},
 	{NAND_MFR_STMICRO, "ST Micro"},
+	{NAND_MFR_HYNIX, "Hynix"},
+	{NAND_MFR_MICRON, "Micron"},
+	{NAND_MFR_AMD, "AMD"},
 	{0x0, "Unknown"}
 };
 #endif
