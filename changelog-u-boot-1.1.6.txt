@@ -1,0 +1,160 @@
+*********************************************************************
+Steps to build the u-boot:
+
+Download and install the cross toolchain gcc version 4:
+
+$ cd /opt
+$ tar xjf mipseltools-gcc412-glibc261.tar.bz2
+$ export PATH=/opt/mipseltools-gcc412-glibc261/bin:$PATH
+
+Download the u-boot tarball u-boot-1.1.6.tar.bz2 and unpack it:
+
+$ tar xjf u-boot-1.1.6.tar.bz2
+
+Download the latest u-boot patch and patch it to the u-boot tree:
+
+$ cd u-boot-1.1.6
+$ gzip -cd ../u-boot-1.1.6-jz-yyyymmdd.patch.gz | patch -p1
+
+or 
+$ cd u-boot-1.1.6
+$ patch -p1 < ../u-boot-1.1.6-yyyymmdd.patch
+
+Make defconfig of the JZSOC based platform, eg:
+$ make lepus_nand_config (NAND boot for JZ4760 LEPUS board)
+
+$ make cetus_nand_config (NAND boot for JZ4755 CETUS board)
+
+$ make apus_nand_config (NAND boot for JZ4750 APUS board)
+
+$ make pavo_config (NOR boot for JZ4740 PAVO board)
+or
+$ make pavo_nand_config (NAND boot for JZ4740 PAVO board)
+
+$ make pmpv2_config (NOR boot for JZ4730 PMP Ver 2.x board)
+or
+$ make pmpv2_nand_config (NAND boot for JZ4730 PMP Ver 2.x board)
+
+Build the u-boot:
+
+$ make
+
+Then burn the u-boot-nand.bin (for NAND flash) or u-boot.bin (for NOR flash)
+to the target board by using JDI or USB boot tool.
+
+
+*********************************************************************
+u-boot-1.1.6-20101015.patch.gz
+  * support pt-702
+  * add makefile for android
+  * add MDDR_MT46H128M16LF
+  * lepus spi boot support
+  * add hynix 4K page nand support
+  
+u-boot-1.1.6-20100724.patch.gz
+  * add EMC_MEM_PHY_BASE&EMC_MEM_PHY_BASE_SHIFT
+  * change the way to select the card's type sd or mmc , add the way to select the card's capacity high or low,changed by lltangjz_mmc.h
+  * add the definition of SD_SEND_IF_COND (CMD8).
+  * add support for high capacity MMC.
+  * change the CONFIG_BAUDRATE from 115200 to 57600.
+  * add support k9gag08uod.
+  * add cpm for jz4760 chip.
+  * change the pll calc m, n, od and add the limited for __PLL_M
+  * Configure UHCCDR Register for JZ4760 UHC.
+  * modified for DDR1.
+  * rm jz4760.c jz_serial.c cpu.c start.S nand_boot_jz4760.c.
+  * change no oob ecc correct.
+  * add Commandline Editing and History support for altair board.
+  * change eccpos to 24 and bch bit to 4.
+  * add support for lepus_nand_config.
+  * seprated SDRAM and DDR, seprated MDDR, DDR1 and DDR2 for jz4760.
+  * Add jz4760 sleep support when power down p0.
+  * add NAND_K9G8G08U0A.h MDDR_H5MS1G62MFP-J3M.h@jz_mem_nand_configs.
+
+u-boot-1.1.6-20100302.patch.gz
+  * Added intc and mdma
+  * Added sd_mdelay function
+  * Modified jz4760.h for spl
+  * Change clock to 378MHz for TVE Output.
+  * Fixed some bugs for support 16 bit nand flash
+  * Added phone board aquila
+  * Correct BCH_ERR_INDEX_EVEN_BIT and BCH_ERR_INDEX_ODD_BIT for in jz4760.h,
+    added some macros for nand in f4760.h and __gpio_as_nor() for jz4760
+  * Added support of 24bit bmp size
+  * Supported any frequency of uart by copying some codes from linux kernel
+  * Modified cpu/mips/jz_cs8900.c to support JZ4750L
+  * Added support for Jz4725B volans board
+  * Changed eccbytes to 7 for 512-byte pagesize nand using 4-bit BCH
+  * Added 512-byte pagesize configuration in volans.h
+  * Modified include/configs/aquila.h to use bootargs for android
+  * Supported spi boot for f4760 board
+  * Move down #undef ENV_IS_EMBEDDED in env_nand.c to avoid empty env_ptr. 
+  * Don't initialize net function for aquila board. 
+  * Set CFG_ENV_SIZE to 0x10000 instead of CFG_NAND_BLOCK_SIZE.
+  * Supported large DRAM(jz4750>128M, jz4760>256M)
+  * Supported spi nor boot from zImage for apus board by undef CONFIG_LOAD_UBOOT in apus.h
+  
+u-boot-1.1.6-jz-20090903.patch.gz
+  * Added Jz4750l platform and board.
+  * Added support of jz4750l in start.S.
+  * Added __cpm_start_all() in nand_boot_jz4750.c.
+  * Changed CFG_NAND_U_BOOT_OFFS to (32 << 10) in f4750l.h.
+  * Corrected a bug in __gpio_as_nand_8bit(n) when unshare.
+  * Corrected board/f4750l/config.mk for supporting nand_boot.
+  * Modified mem to 32M for f4750l in f4750l.h.
+  * f4760 used 48M extal clock and sdram boot as default.
+  * Avoided a hardware bug of nor flash on fpga.
+  * Added mobile sdram args.
+  * Fiexed a bug about print.
+  * Modified DDRC_CFG_TSEL_BIT from 4 to 18 and added Mobile emrs macros;Modified jz_flush_dcache function (jz4750l.h) and gpio_as_i2c, added sync operation.
+  * Added mobile mddr definition, mddr init and mddr config and modified CONFIG_DDR_SDRAM to CONFIG_DDRC.
+  * Added Jz4760 surport, fpga paltform and eth driver, added gpio defination of eth and modified jz_eth.c to avoid compile it on JZ4760.
+  * Modified board/f4760/f4760.c, added GPIO initialization of ETH, corrected macros in jz4760_eth.h according to jz4760.h.
+  * f4760 uart uses 12M clock.
+  * Fixed a bug in cpu/mips/jz4760_eth.c and midified some macros.
+
+u-boot-1.1.6-jz-20090506.patch.gz
+  * Change the size of Nand SPL from 256 KB to 32KB.
+  * You can define CFG_NAND_BCH_WITH_OOB in include/configs/xxx.h to conform 
+    NAND ECC with linux kernel.
+  * APUS use 4K pagesize nand and 8bit BCH with eccpos equal to 24 as default.
+  * Add Jz4755 platform: CETUS board.
+
+u-boot-1.1.6-jz-20090306.patch.gz
+  * Nand driver was modified to support using nandwrite_mlc utils in linux to
+    write uImage:
+    nandwrite_mlc -a -p /dev/mtd2 uImage
+
+u-boot-1.1.6-jz-20090216.patch.gz
+
+  * Support Jz4750
+  * Support NAND of 4KB pagesize
+  * The ECC position in NAND oob could be modified by defining CFG_NAND_ECC_POS 
+    in include/configs/xxx.h
+
+u-boot-1.1.6-jz-20080530.patch.gz:
+
+  * Added Jz4725 DIPPER Board Support.
+  * Added FOXCONN_PT035TN01 LCD panel support for PAVO board.
+  * Modify jz4740_nand.c to optimize the RS correction algorithm.
+
+u-boot-1.1.6-jz-20080414.patch.gz:
+
+  * nand_spl/nand_boot_jz4740.c: fixed a fatal bug of nand_load(), which will
+    fail to load u-boot when meeting a bad block.
+  * Modify the nand read/write/erase commands to enable the bad block handling.
+
+u-boot-1.1.6-jz-20080226.patch.gz:
+
+  * Fixed method to test NAND bad block.
+
+u-boot-1.1.6-jz-20071205.patch.gz:
+
+  * Add Jz4720 virgo board.
+  * Add SD 2.0 (SDHC) card support.
+  * Fix the nand wirte command.
+
+u-boot-1.1.6-jz-20071026.patch.gz:
+
+  * Full package support for Jz4730 and Jz4740.
+
