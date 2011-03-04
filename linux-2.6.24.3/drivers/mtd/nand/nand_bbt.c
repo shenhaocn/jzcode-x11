@@ -6,7 +6,7 @@
  *
  *  Copyright (C) 2004 Thomas Gleixner (tglx@linutronix.de)
  *
- * $Id: nand_bbt.c,v 1.36 2005/11/07 11:14:30 gleixner Exp $
+ * $Id: nand_bbt.c,v 1.1.1.1 2008-03-28 04:29:21 jlwei Exp $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -147,15 +147,15 @@ static int read_bbt(struct mtd_info *mtd, uint8_t *buf, int page, int num,
 {
 	int res, i, j, act = 0;
 	struct nand_chip *this = mtd->priv;
-	size_t retlen, len, totlen;
-	loff_t from;
+	size_mtd_t retlen, len, totlen;
+	loff_mtd_t from;
 	uint8_t msk = (uint8_t) ((1 << bits) - 1);
 
 	totlen = (num * bits) >> 3;
-	from = ((loff_t) page) << this->page_shift;
+	from = ((loff_mtd_t) page) << this->page_shift;
 
 	while (totlen) {
-		len = min(totlen, (size_t) (1 << this->bbt_erase_shift));
+		len = min(totlen, (size_mtd_t) (1 << this->bbt_erase_shift));
 		res = mtd->read(mtd, from, len, &retlen, buf);
 		if (res < 0) {
 			if (retlen != len) {
@@ -235,8 +235,8 @@ static int read_abs_bbt(struct mtd_info *mtd, uint8_t *buf, struct nand_bbt_desc
 /*
  * Scan read raw data from flash
  */
-static int scan_read_raw(struct mtd_info *mtd, uint8_t *buf, loff_t offs,
-			 size_t len)
+static int scan_read_raw(struct mtd_info *mtd, uint8_t *buf, loff_mtd_t offs,
+			 size_mtd_t len)
 {
 	struct mtd_oob_ops ops;
 
@@ -253,7 +253,7 @@ static int scan_read_raw(struct mtd_info *mtd, uint8_t *buf, loff_t offs,
 /*
  * Scan write data with oob to flash
  */
-static int scan_write_bbt(struct mtd_info *mtd, loff_t offs, size_t len,
+static int scan_write_bbt(struct mtd_info *mtd, loff_mtd_t offs, size_mtd_t len,
 			  uint8_t *buf, uint8_t *oob)
 {
 	struct mtd_oob_ops ops;
@@ -308,7 +308,7 @@ static int read_abs_bbts(struct mtd_info *mtd, uint8_t *buf,
  * Scan a given block full
  */
 static int scan_block_full(struct mtd_info *mtd, struct nand_bbt_descr *bd,
-			   loff_t offs, uint8_t *buf, size_t readlen,
+			   loff_mtd_t offs, uint8_t *buf, size_mtd_t readlen,
 			   int scanlen, int len)
 {
 	int ret, j;
@@ -328,7 +328,7 @@ static int scan_block_full(struct mtd_info *mtd, struct nand_bbt_descr *bd,
  * Scan a given block partially
  */
 static int scan_block_fast(struct mtd_info *mtd, struct nand_bbt_descr *bd,
-			   loff_t offs, uint8_t *buf, int len)
+			   loff_mtd_t offs, uint8_t *buf, int len)
 {
 	struct mtd_oob_ops ops;
 	int j, ret;
@@ -374,8 +374,8 @@ static int create_bbt(struct mtd_info *mtd, uint8_t *buf,
 	struct nand_chip *this = mtd->priv;
 	int i, numblocks, len, scanlen;
 	int startblock;
-	loff_t from;
-	size_t readlen;
+	loff_mtd_t from;
+	size_mtd_t readlen;
 
 	printk(KERN_INFO "Scanning device for bad blocks\n");
 
@@ -403,7 +403,7 @@ static int create_bbt(struct mtd_info *mtd, uint8_t *buf,
 		 * below as it makes shifting and masking less painful */
 		numblocks = mtd->size >> (this->bbt_erase_shift - 1);
 		startblock = 0;
-		from = 0;
+		from = (CONFIG_MTD_BADBLOCK_FLAG_PAGE << this->page_shift); //from = 0;
 	} else {
 		if (chip >= this->numchips) {
 			printk(KERN_WARNING "create_bbt(): chipnr (%d) > available chips (%d)\n",
@@ -413,7 +413,7 @@ static int create_bbt(struct mtd_info *mtd, uint8_t *buf,
 		numblocks = this->chipsize >> (this->bbt_erase_shift - 1);
 		startblock = chip * numblocks;
 		numblocks += startblock;
-		from = startblock << (this->bbt_erase_shift - 1);
+		from = (startblock << (this->bbt_erase_shift - 1)) + (CONFIG_MTD_BADBLOCK_FLAG_PAGE << this->page_shift); //from = startblock << (this->bbt_erase_shift - 1);
 	}
 
 	for (i = startblock; i < numblocks;) {
@@ -430,8 +430,8 @@ static int create_bbt(struct mtd_info *mtd, uint8_t *buf,
 
 		if (ret) {
 			this->bbt[i >> 3] |= 0x03 << (i & 0x6);
-			printk(KERN_WARNING "Bad eraseblock %d at 0x%08x\n",
-			       i >> 1, (unsigned int)from);
+			printk(KERN_WARNING "Bad eraseblock %d at 0x%09llx\n",
+			       i >> 1, (unsigned long long)from);
 			mtd->ecc_stats.badblocks++;
 		}
 
@@ -497,7 +497,7 @@ static int search_bbt(struct mtd_info *mtd, uint8_t *buf, struct nand_bbt_descr 
 		for (block = 0; block < td->maxblocks; block++) {
 
 			int actblock = startblock + dir * block;
-			loff_t offs = actblock << this->bbt_erase_shift;
+			loff_mtd_t offs = actblock << this->bbt_erase_shift;
 
 			/* Read first page */
 			scan_read_raw(mtd, buf, offs, mtd->writesize);
@@ -567,8 +567,8 @@ static int write_bbt(struct mtd_info *mtd, uint8_t *buf,
 	int nrchips, bbtoffs, pageoffs, ooboffs;
 	uint8_t msk[4];
 	uint8_t rcode = td->reserved_block_code;
-	size_t retlen, len = 0;
-	loff_t to;
+	size_mtd_t retlen, len = 0;
+	loff_mtd_t to;
 	struct mtd_oob_ops ops;
 
 	ops.ooblen = mtd->oobsize;
@@ -655,12 +655,12 @@ static int write_bbt(struct mtd_info *mtd, uint8_t *buf,
 
 		bbtoffs = chip * (numblocks >> 2);
 
-		to = ((loff_t) page) << this->page_shift;
+		to = ((loff_mtd_t) page) << this->page_shift;
 
 		/* Must we save the block contents ? */
 		if (td->options & NAND_BBT_SAVECONTENT) {
 			/* Make it block aligned */
-			to &= ~((loff_t) ((1 << this->bbt_erase_shift) - 1));
+			to &= ~((loff_mtd_t) ((1 << this->bbt_erase_shift) - 1));
 			len = 1 << this->bbt_erase_shift;
 			res = mtd->read(mtd, to, len, &retlen, buf);
 			if (res < 0) {
@@ -685,12 +685,12 @@ static int write_bbt(struct mtd_info *mtd, uint8_t *buf,
 			pageoffs = page - (int)(to >> this->page_shift);
 			offs = pageoffs << this->page_shift;
 			/* Preset the bbt area with 0xff */
-			memset(&buf[offs], 0xff, (size_t) (numblocks >> sft));
+			memset(&buf[offs], 0xff, (size_mtd_t) (numblocks >> sft));
 			ooboffs = len + (pageoffs * mtd->oobsize);
 
 		} else {
 			/* Calc length */
-			len = (size_t) (numblocks >> sft);
+			len = (size_mtd_t) (numblocks >> sft);
 			/* Make it page aligned ! */
 			len = (len + (mtd->writesize - 1)) &
 				~(mtd->writesize - 1);
@@ -1017,7 +1017,7 @@ int nand_scan_bbt(struct mtd_info *mtd, struct nand_bbt_descr *bd)
  *
  * The function updates the bad block table(s)
 */
-int nand_update_bbt(struct mtd_info *mtd, loff_t offs)
+int nand_update_bbt(struct mtd_info *mtd, loff_mtd_t offs)
 {
 	struct nand_chip *this = mtd->priv;
 	int len, res = 0, writeops = 0;
@@ -1193,7 +1193,7 @@ int nand_default_bbt(struct mtd_info *mtd)
  * @allowbbt:	allow access to bad block table region
  *
 */
-int nand_isbad_bbt(struct mtd_info *mtd, loff_t offs, int allowbbt)
+int nand_isbad_bbt(struct mtd_info *mtd, loff_mtd_t offs, int allowbbt)
 {
 	struct nand_chip *this = mtd->priv;
 	int block;

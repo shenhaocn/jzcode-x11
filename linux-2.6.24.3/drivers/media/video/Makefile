@@ -15,6 +15,11 @@ ifeq ($(CONFIG_VIDEO_V4L1_COMPAT),y)
   obj-$(CONFIG_VIDEO_DEV) += v4l1-compat.o
 endif
 
+obj-$(CONFIG_VIDEO_JZ4730_CIM) += jz4730_cim.o
+obj-$(CONFIG_VIDEO_JZ4740_CIM) += jz4740_cim.o
+obj-$(CONFIG_VIDEO_JZ4750_CIM) += jz4750_cim.o
+obj-$(CONFIG_VIDEO_JZ_SENSOR) += jz_sensor.o
+
 obj-$(CONFIG_VIDEO_BT848) += bt8xx/
 obj-$(CONFIG_VIDEO_IR_I2C)  += ir-kbd-i2c.o
 obj-$(CONFIG_VIDEO_TVAUDIO) += tvaudio.o

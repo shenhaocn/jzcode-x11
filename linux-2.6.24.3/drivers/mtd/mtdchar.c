@@ -1,5 +1,5 @@
 /*
- * $Id: mtdchar.c,v 1.76 2005/11/07 11:14:20 gleixner Exp $
+ * $Id: mtdchar.c,v 1.1.1.1 2008-03-28 04:29:21 jlwei Exp $
  *
  * Character-device access to raw MTD devices.
  *
@@ -7,7 +7,6 @@
 
 #include <linux/device.h>
 #include <linux/fs.h>
-#include <linux/mm.h>
 #include <linux/err.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -82,8 +81,6 @@ static loff_t mtd_lseek (struct file *file, loff_t offset, int orig)
 	return -EINVAL;
 }
 
-
-
 static int mtd_open(struct inode *inode, struct file *file)
 {
 	int minor = iminor(inode);
@@ -136,8 +133,7 @@ static int mtd_close(struct inode *inode, struct file *file)
 
 	DEBUG(MTD_DEBUG_LEVEL0, "MTD_close\n");
 
-	/* Only sync if opened RW */
-	if ((file->f_mode & 2) && mtd->sync)
+	if (mtd->sync)
 		mtd->sync(mtd);
 
 	put_mtd_device(mtd);
@@ -156,7 +152,7 @@ static ssize_t mtd_read(struct file *file, char __user *buf, size_t count,loff_t
 {
 	struct mtd_file_info *mfi = file->private_data;
 	struct mtd_info *mtd = mfi->mtd;
-	size_t retlen=0;
+	size_mtd_t retlen=0;
 	size_t total_retlen=0;
 	int ret=0;
 	int len;
@@ -250,7 +246,7 @@ static ssize_t mtd_write(struct file *file, const char __user *buf, size_t count
 	struct mtd_file_info *mfi = file->private_data;
 	struct mtd_info *mtd = mfi->mtd;
 	char *kbuf;
-	size_t retlen;
+	size_mtd_t retlen;
 	size_t total_retlen=0;
 	int ret=0;
 	int len;
@@ -535,7 +531,7 @@ static int mtd_ioctl(struct inode *inode, struct file *file,
 	{
 		struct mtd_oob_buf buf;
 		struct mtd_oob_ops ops;
-
+		
 		if (copy_from_user(&buf, argp, sizeof(struct mtd_oob_buf)))
 			return -EFAULT;
 
@@ -574,6 +570,73 @@ static int mtd_ioctl(struct inode *inode, struct file *file,
 		kfree(ops.oobbuf);
 		break;
 	}
+
+	case MEMWRITEPAGE:
+	{
+		struct mtd_page_buf buf;
+		struct mtd_oob_ops ops;
+
+		memset(&ops, 0, sizeof(ops));	
+#if 1
+		if(!(file->f_mode & 2))
+			return -EPERM;
+#endif
+
+		if (copy_from_user(&buf, argp, sizeof(struct mtd_page_buf)))
+			return -EFAULT;
+
+		if (buf.ooblength > mtd->oobsize)
+			return -EINVAL;
+
+		if (!mtd->write_oob)
+			ret = -EOPNOTSUPP;
+		else
+			ret = access_ok(VERIFY_READ, buf.oobptr,
+					buf.ooblength) ? 0 : EFAULT;
+
+		if (ret)
+			return ret;
+		
+		ops.len = mtd->writesize;
+		ops.ooblen = buf.ooblength;
+		ops.ooboffs = buf.start & (mtd->oobsize - 1);
+		ops.mode = MTD_OOB_PLACE;
+
+		if (ops.ooboffs && ops.ooblen > (mtd->oobsize - ops.ooboffs))
+			return -EINVAL;
+
+		/* alloc memory and copy oob data from user mode to kernel mode */
+		ops.oobbuf = kmalloc(buf.ooblength, GFP_KERNEL);
+		if (!ops.oobbuf)
+			return -ENOMEM;
+
+		if (copy_from_user(ops.oobbuf, buf.oobptr, buf.ooblength)) {
+			kfree(ops.oobbuf);
+			return -EFAULT;
+		}
+
+		/* alloc memory and copy page data from user mode to kernel mode */
+		ops.datbuf = kmalloc(mtd->writesize, GFP_KERNEL);
+		if (!ops.datbuf)
+			return -ENOMEM;
+
+		if (copy_from_user(ops.datbuf, buf.datptr, mtd->writesize)) {
+			kfree(ops.datbuf);
+			return -EFAULT;
+		}
+
+		buf.start &= ~(mtd->oobsize - 1);
+		ret = mtd->write_oob(mtd, buf.start, &ops);
+
+		if (copy_to_user(argp + 2*sizeof(uint32_t), &ops.retlen,
+				 sizeof(uint32_t)))
+			ret = -EFAULT;
+
+		kfree(ops.oobbuf);
+		kfree(ops.datbuf);
+		break;
+	}
+
 
 	case MEMLOCK:
 	{
@@ -626,9 +689,9 @@ static int mtd_ioctl(struct inode *inode, struct file *file,
 
 	case MEMGETBADBLOCK:
 	{
-		loff_t offs;
+		loff_mtd_t offs;
 
-		if (copy_from_user(&offs, argp, sizeof(loff_t)))
+		if (copy_from_user(&offs, argp, sizeof(loff_mtd_t)))
 			return -EFAULT;
 		if (!mtd->block_isbad)
 			ret = -EOPNOTSUPP;
@@ -639,9 +702,9 @@ static int mtd_ioctl(struct inode *inode, struct file *file,
 
 	case MEMSETBADBLOCK:
 	{
-		loff_t offs;
+		loff_mtd_t offs;
 
-		if (copy_from_user(&offs, argp, sizeof(loff_t)))
+		if (copy_from_user(&offs, argp, sizeof(loff_mtd_t)))
 			return -EFAULT;
 		if (!mtd->block_markbad)
 			ret = -EOPNOTSUPP;
@@ -756,9 +819,9 @@ static int mtd_ioctl(struct inode *inode, struct file *file,
 	}
 
 	default:
+		printk("line : %d\n", __LINE__);
 		ret = -ENOTTY;
 	}
-
 	return ret;
 } /* memory_ioctl */
 

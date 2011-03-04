@@ -274,6 +274,18 @@ MODULE_LICENSE("Dual BSD/GPL");
 
 
 /*-------------------------------------------------------------------------*/
+#if defined(CONFIG_UDC_USE_LB_CACHE)
+#define GHOST
+#endif
+
+#ifdef GHOST
+extern unsigned long udc_read(unsigned long long offset, unsigned int len, unsigned char *);
+extern unsigned long udc_write(unsigned long long offset, unsigned int len, unsigned char *);
+extern int NAND_LB_Init(void);
+extern int NAND_LB_FLASHCACHE(void);
+extern int NAND_MTD_FLASHCACHE(void);
+extern int FlushDataState;
+#endif
 
 #ifdef DEBUG
 #define LDBG(lun,fmt,args...) \
@@ -349,8 +361,8 @@ static struct {
 } mod_data = {					// Default values
 	.transport_parm		= "BBB",
 	.protocol_parm		= "SCSI",
-	.removable		= 0,
-	.can_stall		= 1,
+	.removable		= 1,
+	.can_stall		= 0,
 	.vendor			= DRIVER_VENDOR_ID,
 	.product		= DRIVER_PRODUCT_ID,
 	.release		= 0xffff,	// Use controller chip type
@@ -545,7 +557,6 @@ struct lun {
 	unsigned int	prevent_medium_removal : 1;
 	unsigned int	registered : 1;
 	unsigned int	info_valid : 1;
-
 	u32		sense_data;
 	u32		sense_data_info;
 	u32		unit_attention_data;
@@ -684,6 +695,10 @@ struct fsg_dev {
 	unsigned int		nluns;
 	struct lun		*luns;
 	struct lun		*curlun;
+
+#ifdef GHOST
+	unsigned int            nand_lb_active;
+#endif
 };
 
 typedef void (*fsg_routine_t)(struct fsg_dev *);
@@ -810,6 +825,7 @@ static void put_be32(u8 *buf, u32 val)
 #define STRING_SERIAL		3
 #define STRING_CONFIG		4
 #define STRING_INTERFACE	5
+#define STRING_MS_OS		0xee
 
 /* There is only one configuration. */
 #define	CONFIG_VALUE		1
@@ -997,6 +1013,7 @@ static struct usb_string		strings[] = {
 	{STRING_SERIAL,		serial},
 	{STRING_CONFIG,		"Self-powered"},
 	{STRING_INTERFACE,	"Mass Storage"},
+	{STRING_MS_OS,		"Microsoft"},
 	{}
 };
 
@@ -1618,9 +1635,20 @@ static int do_read(struct fsg_dev *fsg)
 
 		/* Perform the read */
 		file_offset_tmp = file_offset;
+#ifdef GHOST
+		if (fsg->nand_lb_active)
+			nread = udc_read(file_offset_tmp, amount, bh->buf);
+		else
+			nread = vfs_read(curlun->filp,
+					 (char __user *) bh->buf,
+					 amount, &file_offset_tmp);
+
+#else
 		nread = vfs_read(curlun->filp,
 				(char __user *) bh->buf,
 				amount, &file_offset_tmp);
+#endif
+
 		VLDBG(curlun, "file read %u @ %llu -> %d\n", amount,
 				(unsigned long long) file_offset,
 				(int) nread);
@@ -1799,9 +1827,18 @@ static int do_write(struct fsg_dev *fsg)
 
 			/* Perform the write */
 			file_offset_tmp = file_offset;
+#ifdef GHOST
+			if (fsg->nand_lb_active)
+				nwritten = udc_write(file_offset_tmp, amount, bh->buf);
+			else
+				nwritten = vfs_write(curlun->filp,
+						     (char __user *) bh->buf,
+						     amount, &file_offset_tmp);
+#else
 			nwritten = vfs_write(curlun->filp,
 					(char __user *) bh->buf,
 					amount, &file_offset_tmp);
+#endif
 			VLDBG(curlun, "file write %u @ %llu -> %d\n", amount,
 					(unsigned long long) file_offset,
 					(int) nwritten);
@@ -1976,9 +2013,19 @@ static int do_verify(struct fsg_dev *fsg)
 
 		/* Perform the read */
 		file_offset_tmp = file_offset;
+#ifdef GHOST
+		if (fsg->nand_lb_active)
+			nread = udc_read(file_offset_tmp, amount, bh->buf);
+		else
+			nread = vfs_read(curlun->filp,
+					 (char __user *) bh->buf,
+					 amount, &file_offset_tmp);
+#else
 		nread = vfs_read(curlun->filp,
 				(char __user *) bh->buf,
 				amount, &file_offset_tmp);
+#endif
+
 		VLDBG(curlun, "file read %u @ %llu -> %d\n", amount,
 				(unsigned long long) file_offset,
 				(int) nread);
@@ -2013,7 +2060,7 @@ static int do_inquiry(struct fsg_dev *fsg, struct fsg_buffhd *bh)
 {
 	u8	*buf = (u8 *) bh->buf;
 
-	static char vendor_id[] = "Linux   ";
+	static char vendor_id[] = "Ingenic  ";
 	static char product_id[] = "File-Stor Gadget";
 
 	if (!fsg->curlun) {		// Unsupported LUNs are okay
@@ -2857,6 +2904,15 @@ static int do_scsi_command(struct fsg_dev *fsg)
 		reply = check_command(fsg, 6, DATA_DIR_NONE,
 				0, 1,
 				"TEST UNIT READY");
+#ifdef GHOST
+		if( FlushDataState >= 1)
+			FlushDataState++;
+		if(FlushDataState > 6)
+		{	
+			NAND_LB_FLASHCACHE();
+			FlushDataState = 0;
+		}
+#endif
 		break;
 
 	/* Although optional, this command is used by MS-Windows.  We
@@ -3404,6 +3460,16 @@ static int fsg_main_thread(void *fsg_)
 
 	/* The main loop */
 	while (fsg->state != FSG_STATE_TERMINATED) {
+#ifdef GHOST
+		if (fsg->nand_lb_active && (test_bit(SUSPENDED, &fsg->atomic_bitflags)))
+		{
+			NAND_LB_FLASHCACHE();
+			NAND_MTD_FLASHCACHE();
+			
+			/* Don't use resume() to clear this flag - It seems inaccurate. We clear it ourself. */
+			clear_bit(SUSPENDED, &fsg->atomic_bitflags);
+		}
+#endif
 		if (exception_in_progress(fsg) || signal_pending(current)) {
 			handle_exception(fsg);
 			continue;
@@ -3468,7 +3534,7 @@ static int open_backing_file(struct lun *curlun, const char *filename)
 	struct inode			*inode = NULL;
 	loff_t				size;
 	loff_t				num_sectors;
-
+ 
 	/* R/W if we can, R/O if we must */
 	ro = curlun->ro;
 	if (!ro) {
@@ -3526,6 +3592,14 @@ static int open_backing_file(struct lun *curlun, const char *filename)
 	LDBG(curlun, "open backing file: %s\n", filename);
 	rc = 0;
 
+#ifdef GHOST
+	if (strstr(filename,"mtd"))
+	{
+		the_fsg->nand_lb_active = 1;
+		NAND_LB_Init(); 
+	}
+#endif
+
 out:
 	filp_close(filp, current->files);
 	return rc;
@@ -3538,6 +3612,13 @@ static void close_backing_file(struct lun *curlun)
 		LDBG(curlun, "close backing file\n");
 		fput(curlun->filp);
 		curlun->filp = NULL;
+
+#ifdef GHOST
+		NAND_LB_FLASHCACHE();
+		NAND_MTD_FLASHCACHE();
+
+		the_fsg->nand_lb_active = 0;
+#endif		
 	}
 }
 

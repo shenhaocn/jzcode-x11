@@ -32,9 +32,9 @@
    specific to any particular block. */
 struct erase_info {
 	struct mtd_info *mtd;
-	u_int32_t addr;
-	u_int32_t len;
-	u_int32_t fail_addr;
+	u_int64_t addr;
+	u_int64_t len;
+	u_int64_t fail_addr;
 	u_long time;
 	u_long retries;
 	u_int dev;
@@ -46,7 +46,7 @@ struct erase_info {
 };
 
 struct mtd_erase_region_info {
-	u_int32_t offset;			/* At which this region starts, from the beginning of the MTD */
+	u_int64_t offset;			/* At which this region starts, from the beginning of the MTD */
 	u_int32_t erasesize;		/* For this region */
 	u_int32_t numblocks;		/* Number of blocks of erasesize in this region */
 	unsigned long *lockmap;		/* If keeping bitmap of locks */
@@ -89,10 +89,10 @@ typedef enum {
  */
 struct mtd_oob_ops {
 	mtd_oob_mode_t	mode;
-	size_t		len;
-	size_t		retlen;
-	size_t		ooblen;
-	size_t		oobretlen;
+	size_mtd_t		len;
+	size_mtd_t		retlen;
+	size_mtd_t		ooblen;
+	size_mtd_t		oobretlen;
 	uint32_t	ooboffs;
 	uint8_t		*datbuf;
 	uint8_t		*oobbuf;
@@ -101,7 +101,7 @@ struct mtd_oob_ops {
 struct mtd_info {
 	u_char type;
 	u_int32_t flags;
-	u_int32_t size;	 // Total size of the MTD
+	u_int64_t size;	 // Total size of the MTD
 
 	/* "Major" erase size for the device. Naïve users may take this
 	 * to be the only erase size available, or may use the more detailed
@@ -143,18 +143,18 @@ struct mtd_info {
 	int (*erase) (struct mtd_info *mtd, struct erase_info *instr);
 
 	/* This stuff for eXecute-In-Place */
-	int (*point) (struct mtd_info *mtd, loff_t from, size_t len, size_t *retlen, u_char **mtdbuf);
+	int (*point) (struct mtd_info *mtd, loff_mtd_t from, size_mtd_t len, size_mtd_t *retlen, u_char **mtdbuf);
 
 	/* We probably shouldn't allow XIP if the unpoint isn't a NULL */
-	void (*unpoint) (struct mtd_info *mtd, u_char * addr, loff_t from, size_t len);
+	void (*unpoint) (struct mtd_info *mtd, u_char * addr, loff_mtd_t from, size_mtd_t len);
 
 
-	int (*read) (struct mtd_info *mtd, loff_t from, size_t len, size_t *retlen, u_char *buf);
-	int (*write) (struct mtd_info *mtd, loff_t to, size_t len, size_t *retlen, const u_char *buf);
+	int (*read) (struct mtd_info *mtd, loff_mtd_t from, size_mtd_t len, size_mtd_t *retlen, u_char *buf);
+	int (*write) (struct mtd_info *mtd, loff_mtd_t to, size_mtd_t len, size_mtd_t *retlen, const u_char *buf);
 
-	int (*read_oob) (struct mtd_info *mtd, loff_t from,
+	int (*read_oob) (struct mtd_info *mtd, loff_mtd_t from,
 			 struct mtd_oob_ops *ops);
-	int (*write_oob) (struct mtd_info *mtd, loff_t to,
+	int (*write_oob) (struct mtd_info *mtd, loff_mtd_t to,
 			 struct mtd_oob_ops *ops);
 
 	/*
@@ -162,33 +162,33 @@ struct mtd_info {
 	 * flash devices. The user data is one time programmable but the
 	 * factory data is read only.
 	 */
-	int (*get_fact_prot_info) (struct mtd_info *mtd, struct otp_info *buf, size_t len);
-	int (*read_fact_prot_reg) (struct mtd_info *mtd, loff_t from, size_t len, size_t *retlen, u_char *buf);
-	int (*get_user_prot_info) (struct mtd_info *mtd, struct otp_info *buf, size_t len);
-	int (*read_user_prot_reg) (struct mtd_info *mtd, loff_t from, size_t len, size_t *retlen, u_char *buf);
-	int (*write_user_prot_reg) (struct mtd_info *mtd, loff_t from, size_t len, size_t *retlen, u_char *buf);
-	int (*lock_user_prot_reg) (struct mtd_info *mtd, loff_t from, size_t len);
+	int (*get_fact_prot_info) (struct mtd_info *mtd, struct otp_info *buf, size_mtd_t len);
+	int (*read_fact_prot_reg) (struct mtd_info *mtd, loff_mtd_t from, size_mtd_t len, size_mtd_t *retlen, u_char *buf);
+	int (*get_user_prot_info) (struct mtd_info *mtd, struct otp_info *buf, size_mtd_t len);
+	int (*read_user_prot_reg) (struct mtd_info *mtd, loff_mtd_t from, size_mtd_t len, size_mtd_t *retlen, u_char *buf);
+	int (*write_user_prot_reg) (struct mtd_info *mtd, loff_mtd_t from, size_mtd_t len, size_mtd_t *retlen, u_char *buf);
+	int (*lock_user_prot_reg) (struct mtd_info *mtd, loff_mtd_t from, size_mtd_t len);
 
 	/* kvec-based read/write methods.
 	   NB: The 'count' parameter is the number of _vectors_, each of
 	   which contains an (ofs, len) tuple.
 	*/
-	int (*writev) (struct mtd_info *mtd, const struct kvec *vecs, unsigned long count, loff_t to, size_t *retlen);
+	int (*writev) (struct mtd_info *mtd, const struct kvec *vecs, unsigned long count, loff_mtd_t to, size_mtd_t *retlen);
 
 	/* Sync */
 	void (*sync) (struct mtd_info *mtd);
 
 	/* Chip-supported device locking */
-	int (*lock) (struct mtd_info *mtd, loff_t ofs, size_t len);
-	int (*unlock) (struct mtd_info *mtd, loff_t ofs, size_t len);
+	int (*lock) (struct mtd_info *mtd, loff_mtd_t ofs, size_mtd_t len);
+	int (*unlock) (struct mtd_info *mtd, loff_mtd_t ofs, size_mtd_t len);
 
 	/* Power Management functions */
 	int (*suspend) (struct mtd_info *mtd);
 	void (*resume) (struct mtd_info *mtd);
 
 	/* Bad block management functions */
-	int (*block_isbad) (struct mtd_info *mtd, loff_t ofs);
-	int (*block_markbad) (struct mtd_info *mtd, loff_t ofs);
+	int (*block_isbad) (struct mtd_info *mtd, loff_mtd_t ofs);
+	int (*block_markbad) (struct mtd_info *mtd, loff_mtd_t ofs);
 
 	struct notifier_block reboot_notifier;  /* default mode before reboot */
 
@@ -233,10 +233,10 @@ extern void register_mtd_user (struct mtd_notifier *new);
 extern int unregister_mtd_user (struct mtd_notifier *old);
 
 int default_mtd_writev(struct mtd_info *mtd, const struct kvec *vecs,
-		       unsigned long count, loff_t to, size_t *retlen);
+		       unsigned long count, loff_mtd_t to, size_mtd_t *retlen);
 
 int default_mtd_readv(struct mtd_info *mtd, struct kvec *vecs,
-		      unsigned long count, loff_t from, size_t *retlen);
+		      unsigned long count, loff_mtd_t from, size_mtd_t *retlen);
 
 #ifdef CONFIG_MTD_PARTITIONS
 void mtd_erase_callback(struct erase_info *instr);

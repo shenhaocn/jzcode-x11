@@ -303,10 +303,10 @@ void put_mtd_device(struct mtd_info *mtd)
  */
 
 int default_mtd_writev(struct mtd_info *mtd, const struct kvec *vecs,
-		       unsigned long count, loff_t to, size_t *retlen)
+		       unsigned long count, loff_mtd_t to, size_mtd_t *retlen)
 {
 	unsigned long i;
-	size_t totlen = 0, thislen;
+	size_mtd_t totlen = 0, thislen;
 	int ret = 0;
 
 	if(!mtd->write) {
@@ -350,8 +350,9 @@ static inline int mtd_proc_info (char *buf, int i)
 	if (!this)
 		return 0;
 
-	return sprintf(buf, "mtd%d: %8.8x %8.8x \"%s\"\n", i, this->size,
-		       this->erasesize, this->name);
+	return sprintf(buf, "mtd%d: %09llx %8.8x     %d            %d             \"%s\"\n", 
+		       i, this->size, this->erasesize, !!((this->flags)&MTD_NAND_CPU_MODE), 
+		       !!((this->flags)&MTD_MTDBLOCK_JZ_INVALID), this->name);
 }
 
 static int mtd_read_proc (char *page, char **start, off_t off, int count,
@@ -362,7 +363,7 @@ static int mtd_read_proc (char *page, char **start, off_t off, int count,
 
 	mutex_lock(&mtd_table_mutex);
 
-	len = sprintf(page, "dev:    size   erasesize  name\n");
+	len = sprintf(page, "dev:    size   erasesize  cpu_mode jz_mtdblock_invalid       name\n");
         for (i=0; i< MAX_MTD_DEVICES; i++) {
 
                 l = mtd_proc_info(page + len, i);

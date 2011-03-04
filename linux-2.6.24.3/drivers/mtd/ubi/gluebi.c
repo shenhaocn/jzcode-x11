@@ -103,15 +103,15 @@ static void gluebi_put_device(struct mtd_info *mtd)
  * This function returns zero in case of success and a negative error code in
  * case of failure.
  */
-static int gluebi_read(struct mtd_info *mtd, loff_t from, size_t len,
-		       size_t *retlen, unsigned char *buf)
+static int gluebi_read(struct mtd_info *mtd, loff_mtd_t from, size_mtd_t len,
+		       size_mtd_t *retlen, unsigned char *buf)
 {
 	int err = 0, lnum, offs, total_read;
 	struct ubi_volume *vol;
 	struct ubi_device *ubi;
 	uint64_t tmp = from;
 
-	dbg_msg("read %zd bytes from offset %lld", len, from);
+	dbg_msg("read %lld bytes from offset %lld", len, from);
 
 	if (len < 0 || from < 0 || from + len > mtd->size)
 		return -EINVAL;
@@ -129,8 +129,7 @@ static int gluebi_read(struct mtd_info *mtd, loff_t from, size_t len,
 		if (to_read > total_read)
 			to_read = total_read;
 
-		err = ubi_eba_read_leb(ubi, vol->vol_id, lnum, buf, offs,
-				       to_read, 0);
+		err = ubi_eba_read_leb(ubi, vol, lnum, buf, offs, to_read, 0);
 		if (err)
 			break;
 
@@ -155,15 +154,15 @@ static int gluebi_read(struct mtd_info *mtd, loff_t from, size_t len,
  * This function returns zero in case of success and a negative error code in
  * case of failure.
  */
-static int gluebi_write(struct mtd_info *mtd, loff_t to, size_t len,
-		       size_t *retlen, const u_char *buf)
+static int gluebi_write(struct mtd_info *mtd, loff_mtd_t to, size_mtd_t len,
+		       size_mtd_t *retlen, const u_char *buf)
 {
 	int err = 0, lnum, offs, total_written;
 	struct ubi_volume *vol;
 	struct ubi_device *ubi;
 	uint64_t tmp = to;
 
-	dbg_msg("write %zd bytes to offset %lld", len, to);
+	dbg_msg("write %lld bytes to offset %lld", len, to);
 
 	if (len < 0 || to < 0 || len + to > mtd->size)
 		return -EINVAL;
@@ -177,7 +176,7 @@ static int gluebi_write(struct mtd_info *mtd, loff_t to, size_t len,
 	offs = do_div(tmp, mtd->erasesize);
 	lnum = tmp;
 
-	if (len % mtd->writesize || offs % mtd->writesize)
+	if ((u32)len % mtd->writesize || offs % mtd->writesize)
 		return -EINVAL;
 
 	total_written = len;
@@ -187,8 +186,8 @@ static int gluebi_write(struct mtd_info *mtd, loff_t to, size_t len,
 		if (to_write > total_written)
 			to_write = total_written;
 
-		err = ubi_eba_write_leb(ubi, vol->vol_id, lnum, buf, offs,
-					to_write, UBI_UNKNOWN);
+		err = ubi_eba_write_leb(ubi, vol, lnum, buf, offs, to_write,
+					UBI_UNKNOWN);
 		if (err)
 			break;
 
@@ -216,7 +215,7 @@ static int gluebi_erase(struct mtd_info *mtd, struct erase_info *instr)
 	struct ubi_volume *vol;
 	struct ubi_device *ubi;
 
-	dbg_msg("erase %u bytes at offset %u", instr->len, instr->addr);
+	dbg_msg("erase %llu bytes at offset %llu", instr->len, instr->addr);
 
 	if (instr->addr < 0 || instr->addr > mtd->size - mtd->erasesize)
 		return -EINVAL;
@@ -224,11 +223,11 @@ static int gluebi_erase(struct mtd_info *mtd, struct erase_info *instr)
 	if (instr->len < 0 || instr->addr + instr->len > mtd->size)
 		return -EINVAL;
 
-	if (instr->addr % mtd->writesize || instr->len % mtd->writesize)
+	if ((u32)instr->addr % mtd->writesize || (u32)instr->len % mtd->writesize)
 		return -EINVAL;
 
-	lnum = instr->addr / mtd->erasesize;
-	count = instr->len / mtd->erasesize;
+	lnum = instr->addr >> (ffs(mtd->erasesize)-1);
+	count = instr->len >> (ffs(mtd->erasesize)-1);
 
 	vol = container_of(mtd, struct ubi_volume, gluebi_mtd);
 	ubi = vol->ubi;
@@ -237,7 +236,7 @@ static int gluebi_erase(struct mtd_info *mtd, struct erase_info *instr)
 		return -EROFS;
 
 	for (i = 0; i < count; i++) {
-		err = ubi_eba_unmap_leb(ubi, vol->vol_id, lnum + i);
+		err = ubi_eba_unmap_leb(ubi, vol, lnum + i);
 		if (err)
 			goto out_err;
 	}
@@ -292,11 +291,12 @@ int ubi_create_gluebi(struct ubi_device *ubi, struct ubi_volume *vol)
 	/*
 	 * In case of dynamic volume, MTD device size is just volume size. In
 	 * case of a static volume the size is equivalent to the amount of data
-	 * bytes, which is zero at this moment and will be changed after volume
-	 * update.
+	 * bytes.
 	 */
 	if (vol->vol_type == UBI_DYNAMIC_VOLUME)
 		mtd->size = vol->usable_leb_size * vol->reserved_pebs;
+	else
+		mtd->size = vol->used_bytes;
 
 	if (add_mtd_device(mtd)) {
 		ubi_err("cannot not add MTD device\n");
@@ -304,7 +304,7 @@ int ubi_create_gluebi(struct ubi_device *ubi, struct ubi_volume *vol)
 		return -ENFILE;
 	}
 
-	dbg_msg("added mtd%d (\"%s\"), size %u, EB size %u",
+	dbg_msg("added mtd%d (\"%s\"), size %llu, EB size %u",
 		mtd->index, mtd->name, mtd->size, mtd->erasesize);
 	return 0;
 }

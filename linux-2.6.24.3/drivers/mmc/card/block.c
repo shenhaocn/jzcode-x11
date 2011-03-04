@@ -225,7 +225,11 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 		brq.mrq.cmd = &brq.cmd;
 		brq.mrq.data = &brq.data;
 
+#ifdef CONFIG_JZ4750_BOOT_FROM_MSC0
+		brq.cmd.arg = req->sector + 16384;
+#else
 		brq.cmd.arg = req->sector;
+#endif
 		if (!mmc_card_blockaddr(card))
 			brq.cmd.arg <<= 9;
 		brq.cmd.flags = MMC_RSP_SPI_R1 | MMC_RSP_R1 | MMC_CMD_ADTC;

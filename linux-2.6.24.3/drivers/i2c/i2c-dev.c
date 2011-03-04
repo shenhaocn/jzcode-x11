@@ -36,8 +36,9 @@
 #include <linux/i2c-dev.h>
 #include <asm/uaccess.h>
 
+extern unsigned short sub_addr;
+extern int  addr_val;
 static struct i2c_driver i2cdev_driver;
-
 /*
  * An i2c_dev represents an i2c_adapter ... an I2C or SMBus master, not a
  * slave (i2c_client) with which messages will be exchanged.  It's coupled
@@ -422,6 +423,14 @@ static int i2cdev_ioctl(struct inode *inode, struct file *file,
 	case I2C_TIMEOUT:
 		client->adapter->timeout = arg;
 		break;
+	case I2C_SET_SUB_ADDRESS:
+		addr_val = 1;
+		sub_addr = arg;
+		break;
+	case I2C_SET_CLOCK:
+		i2c_jz_setclk(arg);
+		break;
+
 	default:
 		/* NOTE:  returning a fault code here could cause trouble
 		 * in buggy userspace code.  Some old kernel bugs returned

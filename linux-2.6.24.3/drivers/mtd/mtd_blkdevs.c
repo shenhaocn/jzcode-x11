@@ -41,8 +41,8 @@ static int do_blktrans_request(struct mtd_blktrans_ops *tr,
 	unsigned long block, nsect;
 	char *buf;
 
-	block = req->sector << 9 >> tr->blkshift;
-	nsect = req->current_nr_sectors << 9 >> tr->blkshift;
+	block = ((unsigned long long)req->sector) << 9 >> tr->blkshift;
+	nsect = ((unsigned long long)req->current_nr_sectors) << 9 >> tr->blkshift;
 
 	buf = req->buffer;
 
@@ -278,7 +278,7 @@ int add_mtd_blktrans_dev(struct mtd_blktrans_dev *new)
 
 	/* 2.5 has capacity in units of 512 bytes while still
 	   having BLOCK_SIZE_BITS set to 10. Just to keep us amused. */
-	set_capacity(gd, (new->size * tr->blksize) >> 9);
+	set_capacity(gd, ((u_int64_t)new->size * tr->blksize) >> 9);
 
 	gd->private_data = new;
 	new->blkcore_priv = gd;

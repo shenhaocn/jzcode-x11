@@ -135,8 +135,8 @@ int ubi_io_read(const struct ubi_device *ubi, void *buf, int pnum, int offset,
 		int len)
 {
 	int err, retries = 0;
-	size_t read;
-	loff_t addr;
+	size_mtd_t read;
+	loff_mtd_t addr;
 
 	dbg_io("read %d bytes from PEB %d:%d", len, pnum, offset);
 
@@ -148,7 +148,7 @@ int ubi_io_read(const struct ubi_device *ubi, void *buf, int pnum, int offset,
 	if (err)
 		return err > 0 ? -EINVAL : err;
 
-	addr = (loff_t)pnum * ubi->peb_size + offset;
+	addr = (loff_mtd_t)pnum * ubi->peb_size + offset;
 retry:
 	err = ubi->mtd->read(ubi->mtd, addr, len, &read, buf);
 	if (err) {
@@ -164,15 +164,25 @@ retry:
 
 		if (read != len && retries++ < UBI_IO_RETRIES) {
 			dbg_io("error %d while reading %d bytes from PEB %d:%d, "
-			       "read only %zd bytes, retry",
+			       "read only %lld bytes, retry",
 			       err, len, pnum, offset, read);
 			yield();
 			goto retry;
 		}
 
 		ubi_err("error %d while reading %d bytes from PEB %d:%d, "
-			"read %zd bytes", err, len, pnum, offset, read);
+			"read %lld bytes", err, len, pnum, offset, read);
 		ubi_dbg_dump_stack();
+
+		/*
+		 * The driver should never return -EBADMSG if it failed to read
+		 * all the requested data. But some buggy drivers might do
+		 * this, so we change it to -EIO.
+		 */
+		if (read != len && err == -EBADMSG) {
+			ubi_assert(0);
+			err = -EIO;
+		}
 	} else {
 		ubi_assert(len == read);
 
@@ -206,8 +216,8 @@ int ubi_io_write(struct ubi_device *ubi, const void *buf, int pnum, int offset,
 		 int len)
 {
 	int err;
-	size_t written;
-	loff_t addr;
+	size_mtd_t written;
+	loff_mtd_t addr;
 
 	dbg_io("write %d bytes to PEB %d:%d", len, pnum, offset);
 
@@ -252,11 +262,11 @@ int ubi_io_write(struct ubi_device *ubi, const void *buf, int pnum, int offset,
 		return -EIO;
 	}
 
-	addr = (loff_t)pnum * ubi->peb_size + offset;
+	addr = (loff_mtd_t)pnum * ubi->peb_size + offset;
 	err = ubi->mtd->write(ubi->mtd, addr, len, &written, buf);
 	if (err) {
 		ubi_err("error %d while writing %d bytes to PEB %d:%d, written"
-			" %zd bytes", err, len, pnum, offset, written);
+			" %lld bytes", err, len, pnum, offset, written);
 		ubi_dbg_dump_stack();
 	} else
 		ubi_assert(written == len);
@@ -298,7 +308,7 @@ retry:
 	memset(&ei, 0, sizeof(struct erase_info));
 
 	ei.mtd      = ubi->mtd;
-	ei.addr     = (loff_t)pnum * ubi->peb_size;
+	ei.addr     = (loff_mtd_t)pnum * ubi->peb_size;
 	ei.len      = ubi->peb_size;
 	ei.callback = erase_callback;
 	ei.priv     = (unsigned long)&wq;
@@ -501,7 +511,7 @@ int ubi_io_is_bad(const struct ubi_device *ubi, int pnum)
 	if (ubi->bad_allowed) {
 		int ret;
 
-		ret = mtd->block_isbad(mtd, (loff_t)pnum * ubi->peb_size);
+		ret = mtd->block_isbad(mtd, (loff_mtd_t)pnum * ubi->peb_size);
 		if (ret < 0)
 			ubi_err("error %d while checking if PEB %d is bad",
 				ret, pnum);
@@ -536,7 +546,7 @@ int ubi_io_mark_bad(const struct ubi_device *ubi, int pnum)
 	if (!ubi->bad_allowed)
 		return 0;
 
-	err = mtd->block_markbad(mtd, (loff_t)pnum * ubi->peb_size);
+	err = mtd->block_markbad(mtd, (loff_mtd_t)pnum * ubi->peb_size);
 	if (err)
 		ubi_err("cannot mark PEB %d bad, error %d", pnum, err);
 	return err;
@@ -621,6 +631,8 @@ int ubi_io_read_ec_hdr(struct ubi_device *ubi, int pnum,
 
 	dbg_io("read EC header from PEB %d", pnum);
 	ubi_assert(pnum >= 0 && pnum < ubi->peb_count);
+	if (UBI_IO_DEBUG)
+		verbose = 1;
 
 	err = ubi_io_read(ubi, ec_hdr, pnum, 0, UBI_EC_HDR_SIZE);
 	if (err) {
@@ -894,6 +906,8 @@ int ubi_io_read_vid_hdr(struct ubi_device *ubi, int pnum,
 
 	dbg_io("read VID header from PEB %d", pnum);
 	ubi_assert(pnum >= 0 &&  pnum < ubi->peb_count);
+	if (UBI_IO_DEBUG)
+		verbose = 1;
 
 	p = (char *)vid_hdr - ubi->vid_hdr_shift;
 	err = ubi_io_read(ubi, p, pnum, ubi->vid_hdr_aloffset,
@@ -1218,15 +1232,15 @@ exit:
 static int paranoid_check_all_ff(struct ubi_device *ubi, int pnum, int offset,
 				 int len)
 {
-	size_t read;
+	size_mtd_t read;
 	int err;
-	loff_t addr = (loff_t)pnum * ubi->peb_size + offset;
+	loff_mtd_t addr = (loff_mtd_t)pnum * ubi->peb_size + offset;
 
 	mutex_lock(&ubi->dbg_buf_mutex);
 	err = ubi->mtd->read(ubi->mtd, addr, len, &read, ubi->dbg_peb_buf);
 	if (err && err != -EUCLEAN) {
 		ubi_err("error %d while reading %d bytes from PEB %d:%d, "
-			"read %zd bytes", err, len, pnum, offset, read);
+			"read %lld bytes", err, len, pnum, offset, read);
 		goto error;
 	}
 

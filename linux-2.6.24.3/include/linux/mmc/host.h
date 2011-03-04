@@ -41,6 +41,7 @@ struct mmc_ios {
 
 #define MMC_BUS_WIDTH_1		0
 #define MMC_BUS_WIDTH_4		2
+#define MMC_BUS_WIDTH_8		4
 
 	unsigned char	timing;			/* timing specification used */
 

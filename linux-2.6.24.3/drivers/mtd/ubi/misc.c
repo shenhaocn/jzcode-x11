@@ -67,7 +67,12 @@ int ubi_check_volume(struct ubi_device *ubi, int vol_id)
 	if (vol->vol_type != UBI_STATIC_VOLUME)
 		return 0;
 
+#if defined(CONFIG_MTD_NAND_DMA) && !defined(CONFIG_MTD_NAND_DMABUF)
+	buf = kmalloc(vol->usable_leb_size, GFP_KERNEL);
+#else
 	buf = vmalloc(vol->usable_leb_size);
+#endif
+
 	if (!buf)
 		return -ENOMEM;
 
@@ -79,7 +84,7 @@ int ubi_check_volume(struct ubi_device *ubi, int vol_id)
 		else
 			size = vol->usable_leb_size;
 
-		err = ubi_eba_read_leb(ubi, vol_id, i, buf, 0, size, 1);
+		err = ubi_eba_read_leb(ubi, vol, i, buf, 0, size, 1);
 		if (err) {
 			if (err == -EBADMSG)
 				err = 1;
@@ -87,7 +92,11 @@ int ubi_check_volume(struct ubi_device *ubi, int vol_id)
 		}
 	}
 
+#if defined(CONFIG_MTD_NAND_DMA) && !defined(CONFIG_MTD_NAND_DMABUF)
+	kfree(buf);
+#else
 	vfree(buf);
+#endif
 	return err;
 }
 

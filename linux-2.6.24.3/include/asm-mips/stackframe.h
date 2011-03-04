@@ -301,6 +301,10 @@
 		mfc0	a0, CP0_STATUS
 		ori	a0, STATMASK
 		xori	a0, STATMASK
+#if 1
+		la      v1, 0xf7ffffff
+		and     a0, a0, v1
+#endif
 		mtc0	a0, CP0_STATUS
 		li	v1, 0xff00
 		and	a0, v1
@@ -386,6 +390,11 @@
 		li	t1, ST0_CU0 | STATMASK
 		or	t0, t1
 		xori	t0, STATMASK
+#if 1
+		la      t1, 0xf7ffffff
+	        and     t0, t0, t1
+		li	t1, ST0_CU0 | STATMASK
+#endif
 		mtc0	t0, CP0_STATUS
 #else /* CONFIG_MIPS_MT_SMTC */
 		/*
@@ -421,6 +430,11 @@
 		li	t1, ST0_CU0 | STATMASK
 		or	t0, t1
 		xori	t0, STATMASK & ~1
+#if 1
+		la      t1, 0xf7ffffff
+	        and     t0, t0, t1
+		li	t1, ST0_CU0 | STATMASK
+#endif
 		mtc0	t0, CP0_STATUS
 #else /* CONFIG_MIPS_MT_SMTC */
 		/*
@@ -489,6 +503,11 @@
 #endif
 		or	t0, t1
 		xori	t0, STATMASK & ~1
+#if 1
+		la      t1, 0xf7ffffff
+	        and     t0, t0, t1
+		li	t1, ST0_CU0 | (STATMASK & ~1)
+#endif
 		mtc0	t0, CP0_STATUS
 #ifdef CONFIG_MIPS_MT_SMTC
 		_ehb

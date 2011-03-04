@@ -1,5 +1,5 @@
 /*
- * $Id: mtd-abi.h,v 1.13 2005/11/07 11:14:56 gleixner Exp $
+ * $Id: mtd-abi.h,v 1.1.1.1 2008-03-28 04:29:21 jlwei Exp $
  *
  * Portions of MTD ABI definition which are shared by kernel and user space
  */
@@ -7,15 +7,31 @@
 #ifndef __MTD_ABI_H__
 #define __MTD_ABI_H__
 
+#ifndef __KERNEL__ /* Urgh. The whole point of splitting this out into
+		    separate files was to avoid #ifdef __KERNEL__ */
+#define __user
+#endif
+
+typedef unsigned long long size_mtd_t;
+typedef unsigned long long loff_mtd_t;
+
 struct erase_info_user {
-	uint32_t start;
-	uint32_t length;
+	uint64_t start;
+	uint64_t length;
 };
 
 struct mtd_oob_buf {
 	uint32_t start;
 	uint32_t length;
 	unsigned char __user *ptr;
+};
+
+struct mtd_page_buf {
+	uint32_t start;      //page start address
+	uint32_t ooblength;  
+	uint32_t datlength;
+	unsigned char __user *oobptr;
+	unsigned char __user *datptr;
 };
 
 #define MTD_ABSENT		0
@@ -30,6 +46,8 @@ struct mtd_oob_buf {
 #define MTD_BIT_WRITEABLE	0x800	/* Single bits can be flipped */
 #define MTD_NO_ERASE		0x1000	/* No erase necessary */
 #define MTD_STUPID_LOCK		0x2000	/* Always locked after reset */
+#define MTD_MTDBLOCK_JZ_INVALID	0x4000	/* Device doesn't works over mtdblock-jz */
+#define MTD_NAND_CPU_MODE	0x8000	/* Using cpu mode for NAND */
 
 // Some common devices / combinations of capabilities
 #define MTD_CAP_ROM		0
@@ -52,7 +70,7 @@ struct mtd_oob_buf {
 struct mtd_info_user {
 	uint8_t type;
 	uint32_t flags;
-	uint32_t size;	 // Total size of the MTD
+	uint64_t size;	 // Total size of the MTD
 	uint32_t erasesize;
 	uint32_t writesize;
 	uint32_t oobsize;   // Amount of OOB data per block (e.g. 16)
@@ -63,7 +81,7 @@ struct mtd_info_user {
 };
 
 struct region_info_user {
-	uint32_t offset;		/* At which this region starts,
+	uint64_t offset;		/* At which this region starts,
 					 * from the beginning of the MTD */
 	uint32_t erasesize;		/* For this region */
 	uint32_t numblocks;		/* Number of blocks in this region */
@@ -86,8 +104,8 @@ struct otp_info {
 #define MEMGETREGIONINFO	_IOWR('M', 8, struct region_info_user)
 #define MEMSETOOBSEL		_IOW('M', 9, struct nand_oobinfo)
 #define MEMGETOOBSEL		_IOR('M', 10, struct nand_oobinfo)
-#define MEMGETBADBLOCK		_IOW('M', 11, loff_t)
-#define MEMSETBADBLOCK		_IOW('M', 12, loff_t)
+#define MEMGETBADBLOCK		_IOW('M', 11, loff_mtd_t)
+#define MEMSETBADBLOCK		_IOW('M', 12, loff_mtd_t)
 #define OTPSELECT		_IOR('M', 13, int)
 #define OTPGETREGIONCOUNT	_IOW('M', 14, int)
 #define OTPGETREGIONINFO	_IOW('M', 15, struct otp_info)
@@ -95,6 +113,7 @@ struct otp_info {
 #define ECCGETLAYOUT		_IOR('M', 17, struct nand_ecclayout)
 #define ECCGETSTATS		_IOR('M', 18, struct mtd_ecc_stats)
 #define MTDFILEMODE		_IO('M', 19)
+#define MEMWRITEPAGE		_IOWR('M', 20, struct mtd_page_buf)
 
 /*
  * Obsolete legacy interface. Keep it in order not to break userspace
@@ -104,7 +123,8 @@ struct nand_oobinfo {
 	uint32_t useecc;
 	uint32_t eccbytes;
 	uint32_t oobfree[8][2];
-	uint32_t eccpos[32];
+	uint32_t eccpos[104];	/* more fields(13*8) are required for 
+				 * 8-bit BCH ECC and 4KB pagesize nand, by Regen */
 };
 
 struct nand_oobfree {
@@ -119,7 +139,7 @@ struct nand_oobfree {
  */
 struct nand_ecclayout {
 	uint32_t eccbytes;
-	uint32_t eccpos[64];
+	uint32_t eccpos[128];
 	uint32_t oobavail;
 	struct nand_oobfree oobfree[MTD_MAX_OOBFREE_ENTRIES];
 };
