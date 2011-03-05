@@ -1,0 +1,1 @@
+/home/shenhao/project/jz4740/jzcode-x11/u-boot-1.1.6/cpu/mips/start.S

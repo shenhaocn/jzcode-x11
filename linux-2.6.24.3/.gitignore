@@ -23,8 +23,8 @@
 #
 tags
 TAGS
-vmlinux*
-!vmlinux.lds.S
+#vmlinux*
+#!vmlinux.lds.S
 System.map
 Module.symvers
 !.gitignore
